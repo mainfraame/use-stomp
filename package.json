@@ -1,0 +1,95 @@
+{
+  "name": "use-stomp",
+  "version": "1.0.0",
+  "description": "react provider and hooks for websockets using stomp protocol",
+  "main": "cjs/index.js",
+  "module": "esm/index.js",
+  "types": "cjs/index.d.ts",
+  "files": [
+    "cjs",
+    "esm",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "NODE_ENV=production ./build.sh -build -styleguidist",
+    "build:dev": "NODE_ENV=development ./build.sh -build -pack",
+    "format": "prettier --check \"{,!(node_modules|cjs|esm|gradle)/**/}*.{ts,tsx}\" --loglevel warn -w"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mentierd/use-stomp.git"
+  },
+  "keywords": [
+    "react",
+    "hooks",
+    "websockets",
+    "stomp"
+  ],
+  "author": "dayne mentier",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mentierd/use-stomp/issues"
+  },
+  "homepage": "https://github.com/mentierd/use-stomp#readme",
+  "dependencies": {
+    "core-js": "^3.8.0",
+    "react": ">=16.9.0",
+    "react-dom": ">=16.9.0",
+    "sockjs-client": "^1.5.0",
+    "stompjs": "^2.3.3"
+  },
+  "devDependencies": {
+    "@babel/cli": "~7.12.1",
+    "@babel/core": "~7.12.3",
+    "@babel/plugin-proposal-class-properties": "~7.12.1",
+    "@babel/plugin-proposal-decorators": "~7.12.1",
+    "@babel/plugin-transform-react-constant-elements": "^7.12.1",
+    "@babel/plugin-transform-runtime": "~7.12.1",
+    "@babel/plugin-transform-typescript": "~7.12.1",
+    "@babel/preset-env": "~7.12.1",
+    "@babel/preset-react": "~7.12.1",
+    "@babel/preset-typescript": "~7.12.1",
+    "@types/react": "16.14.2",
+    "@types/react-dom": "16.9.10",
+    "@types/sockjs-client": "^1.5.0",
+    "@types/stompjs": "^2.3.4",
+    "babel-plugin-set-display-name": "1.1.2",
+    "babel-plugin-styled-components": "~1.11.1",
+    "husky": "~4.2.5",
+    "import-sort-style-module": "6.0.0",
+    "prettier": "^2.1.2",
+    "prettier-plugin-import-sort": "0.0.6",
+    "typescript": "^4.1.2"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm run format && npm run build:dev && git add ."
+    }
+  },
+  "importSort": {
+    ".js, .jsx, .ts, .tsx": {
+      "style": "module",
+      "parser": "typescript"
+    }
+  },
+  "prettier": {
+    "arrowParens": "always",
+    "bracketSpacing": false,
+    "embeddedLanguageFormatting": "auto",
+    "htmlWhitespaceSensitivity": "strict",
+    "insertPragma": false,
+    "jsxBracketSameLine": true,
+    "jsxSingleQuote": true,
+    "printWidth": 80,
+    "proseWrap": "preserve",
+    "quoteProps": "as-needed",
+    "requirePragma": false,
+    "semi": true,
+    "singleQuote": true,
+    "tabWidth": 4,
+    "trailingComma": "none",
+    "useTabs": false
+  },
+  "sideEffects": false
+}

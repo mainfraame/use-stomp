@@ -2,7 +2,6 @@ module.exports = (app) => {
     const baseConfig = {
         presets: ['@babel/preset-react', '@babel/typescript'],
         plugins: [
-            'babel-plugin-macros',
             ['babel-plugin-set-display-name', {setName: true}],
             '@babel/plugin-transform-react-constant-elements',
             [
@@ -23,16 +22,6 @@ module.exports = (app) => {
                     isTSX: true
                 }
             ],
-            [
-                'babel-plugin-styled-components',
-                {
-                    minify: true,
-                    pure: true,
-                    ssr: false,
-                    transpileTemplateLiterals: false
-                }
-            ],
-            'babel-plugin-lodash',
             '@babel/plugin-transform-runtime'
         ]
     };
