@@ -1,6 +1,10 @@
 import {useCallback, useContext, useEffect, useState} from 'react';
 
-import UseStompCtx from './context';
+import UseStompCtx, {UseStompCtxProps} from './context';
+
+export function useStompCtx(): UseStompCtxProps {
+    return useContext(UseStompCtx);
+}
 
 export default function useStomp<T>(
     /** channel to subscribe to */
@@ -8,8 +12,8 @@ export default function useStomp<T>(
     /** callback that's called when a message is received (optional) */
     callback?: (msg: T, headers?: any) => void
 ): [T, (msg: T) => void] {
-    const context = useContext(UseStompCtx);
-    const [msg, setMsg] = useState<T>({} as T);
+    const context = useStompCtx();
+    const [msg, setMsg] = useState<T>(null);
 
     const send = useCallback(
         (msg) => {
@@ -19,18 +23,22 @@ export default function useStomp<T>(
     );
 
     useEffect(() => {
-        const subscription = context.subscribe(channel, (msg, headers) => {
-            if (callback) {
-                callback(msg, headers);
-            }
+        if (context.connected) {
+            const subscription = context.subscribe(channel, (msg, headers) => {
+                if (callback) {
+                    callback(msg, headers);
+                }
 
-            setMsg(() => msg);
-        });
+                setMsg(() => msg);
+            });
 
-        return () => {
-            subscription.unsubscribe();
-        };
-    }, []);
+            return () => {
+                if (context.connected) {
+                    subscription.unsubscribe();
+                }
+            };
+        }
+    }, [context.connected]);
 
     return [msg, send];
 }
