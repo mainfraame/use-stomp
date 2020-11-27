@@ -1,8 +1,9 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import SockJS from 'sockjs-client';
-import Stomp from 'stompjs';
+import SockJS, {Options} from 'sockjs-client';
+import type {Client} from 'stompjs';
 
 import UseStompCtx from './context';
+import Stomp from './stomp';
 
 export type UseStompProviderProps = {
     /**
@@ -10,25 +11,21 @@ export type UseStompProviderProps = {
      */
     url: string;
     /**
+     * Add console logs for debugging
+     */
+    debug: boolean;
+    /**
      * SockJS Options (https://github.com/sockjs/sockjs-client#sockjs-client-api)
      */
-    options?: object;
+    options?: Options;
     /**
      * The request header will be passed to the server or agent through the STOMP connection frame
      */
-    headers?: object;
+    headers?: Record<string, unknown>;
     /**
      * The request header that will be passed when subscribing to the target
      */
-    subscribeHeaders?: object;
-    /**
-     * The number of milliseconds to send and wait for a heartbeat message
-     */
-    heartbeatInterval?: number;
-    /**
-     * The heartbeat channel
-     */
-    heartbeatChannel?: string;
+    subscribeHeaders?: Record<string, unknown>;
     /**
      * override default parsing of messages
      */
@@ -47,8 +44,8 @@ export default React.memo<UseStompProviderProps>((props) => {
     const [connected, setConnected] = useState(false);
     const [subscriptions, setSubscriptions] = useState({});
 
-    const [client, setClient] = useState(() =>
-        Stomp.over(new SockJS(props.url, null, props.options))
+    const [client, setClient] = useState<Client>(() =>
+        Stomp.over(new SockJS(props.url, null, props.options), props.debug)
     );
 
     const getRetryInterval = useCallback((count) => 1000 * count, []);
@@ -59,7 +56,9 @@ export default React.memo<UseStompProviderProps>((props) => {
         }
 
         try {
-            return typeof msg === 'string' ? msg : JSON.stringify(msg);
+            return typeof msg === 'object' && msg !== null
+                ? JSON.stringify(msg)
+                : msg;
         } catch (e) {
             return msg;
         }
@@ -74,7 +73,9 @@ export default React.memo<UseStompProviderProps>((props) => {
             try {
                 const parsed = JSON.parse(msg);
 
-                return typeof parsed === 'object' && parsed.content
+                return typeof parsed === 'object' &&
+                    parsed !== null &&
+                    parsed.content
                     ? parsed.content
                     : parsed;
             } catch (e) {
@@ -95,10 +96,11 @@ export default React.memo<UseStompProviderProps>((props) => {
         client.connect(
             props.headers,
             () => {
+                console.log('[use-stomp::connection::success]');
                 setConnected(() => true);
             },
             (error: any) => {
-                console.error('[use-stomp:error]', error.stack);
+                console.error('[use-stomp::connection::error]', error);
 
                 if (connected) {
                     cleanUp();
@@ -121,7 +123,9 @@ export default React.memo<UseStompProviderProps>((props) => {
             timeoutId.current = null;
         }
 
-        explicitDisconnect.current = true;
+        if (connected) {
+            explicitDisconnect.current = true;
+        }
 
         if (connected) {
             client.disconnect(() => {
@@ -140,7 +144,10 @@ export default React.memo<UseStompProviderProps>((props) => {
                     packageMessage(channel, msg, optHeaders)
                 );
             } else {
-                console.warn('[use-stomp:send]', 'websocket not connected');
+                console.warn(
+                    '[use-stomp:send]',
+                    'cannot send when websocket is not connected'
+                );
             }
         },
         [client, connected, packageMessage]
@@ -176,33 +183,23 @@ export default React.memo<UseStompProviderProps>((props) => {
     );
 
     useEffect(() => {
-        explicitDisconnect.current = false;
-        connect();
-        return () => disconnect();
-    }, []);
-
-    useEffect(() => {
-        let $heartbeat;
-
-        if (connected && props.heartbeatChannel) {
-            $heartbeat = setInterval(() => {
-                send(props.heartbeatChannel, '');
-            }, props.heartbeatInterval);
+        if (props.headers) {
+            explicitDisconnect.current = false;
+            connect();
         }
 
         return () => {
-            if ($heartbeat) {
-                clearInterval($heartbeat);
-            }
+            disconnect();
         };
-    }, [connected]);
+    }, [props.headers]);
 
     const ctx = useMemo(
         () => ({
             send,
-            subscribe
+            subscribe,
+            connected
         }),
-        [send, subscribe]
+        [connected, send, subscribe]
     );
 
     return (
