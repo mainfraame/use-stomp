@@ -2,6 +2,8 @@ import React from 'react';
 import type {Subscription} from 'stompjs';
 
 export type UseStompCtxProps = {
+    /** whether or not the websocket is connected */
+    connected?: boolean;
     /** subscribe to a channel with given callback; returns unsubscribe */
     subscribe?(
         /** channel to subscribe to */
