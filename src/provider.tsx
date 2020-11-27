@@ -13,7 +13,7 @@ export type UseStompProviderProps = {
     /**
      * Add console logs for debugging
      */
-    debug: boolean;
+    debug?: boolean;
     /**
      * SockJS Options (https://github.com/sockjs/sockjs-client#sockjs-client-api)
      */
@@ -45,7 +45,7 @@ export default React.memo<UseStompProviderProps>((props) => {
     const [subscriptions, setSubscriptions] = useState({});
 
     const [client, setClient] = useState<Client>(() =>
-        Stomp.over(new SockJS(props.url, null, props.options), props.debug)
+        Stomp.over(new SockJS(props.url, null, props.options), !!props.debug)
     );
 
     const getRetryInterval = useCallback((count) => 1000 * count, []);

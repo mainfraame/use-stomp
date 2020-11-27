@@ -11,7 +11,6 @@ The context contains a function to subscribe to a given channel and a function t
 The decorator allows you to use the useStomp hook with legacy class-based components.
 
 ```typescript jsx
-
 import React from 'react';
 import {withUseStomp} from 'use-stomp';
 
@@ -39,7 +38,6 @@ class ExampleDecorator extends React.Component {
 ## Hook - < [useStomp](./src/hook.ts) >
 
 ```typescript jsx
-
 import React from 'react';
 import {useStomp} from 'use-stomp';
 
@@ -67,17 +65,20 @@ const ExampleDecorator = () => {
 Please see the typescript definition for the provider; it has notes regarding all the properties available.
 
 ```typescript jsx
-
-import React from 'react';
+import React, {useState} from 'react';
 import {UseStompProvider} from 'use-stomp';
 
 const App = () => {
-    return (
 
+    const [headers] = useState({
+        Authorization: 'auth-token'
+    })
+
+    return (
         <UseStompProvider
-            url='ws://ws-endpoint'
-            heartbeatChannel='heartbeat'
-            heartbeatInterval={1000}>
+            debug // <-- enable debugging
+            headers={headers}
+            url='ws://ws-endpoint'>
             {/* rest of app */}
         </UseStompProvider>
     )

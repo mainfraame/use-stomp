@@ -144,7 +144,7 @@ const Client = (function () {
 
     Client.prototype.debug = function (message) {
         let _ref;
-        
+
         if (!this.debugEnabled) {
             return;
         }
