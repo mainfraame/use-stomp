@@ -1,6 +1,6 @@
 {
   "name": "use-stomp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "react provider, class decorator, and a hook for websockets using the stomp protocol",
   "main": "cjs/index.js",
   "module": "esm/index.js",
@@ -40,7 +40,7 @@
     "react": ">=16.9.0",
     "react-dom": ">=16.9.0",
     "sockjs-client": "^1.5.0",
-    "stompjs": "^2.3.3"
+    "websocket": "^1.0.32"
   },
   "devDependencies": {
     "@babel/cli": "~7.12.1",
@@ -57,6 +57,7 @@
     "@types/react-dom": "16.9.10",
     "@types/sockjs-client": "^1.5.0",
     "@types/stompjs": "^2.3.4",
+    "@types/websocket": "1.0.1",
     "babel-plugin-set-display-name": "1.1.2",
     "babel-plugin-styled-components": "~1.11.1",
     "husky": "~4.2.5",
