@@ -87,7 +87,6 @@ export default React.memo<UseStompProviderProps>((props) => {
 
     const cleanUp = useCallback(() => {
         setConnected(() => false);
-        setClient(() => null);
         retryCount.current = 0;
         setSubscriptions(() => {});
     }, []);
@@ -192,6 +191,12 @@ export default React.memo<UseStompProviderProps>((props) => {
             disconnect();
         };
     }, [props.headers]);
+
+    useEffect(() => {
+        return () => {
+            setClient(() => null);
+        };
+    }, []);
 
     const ctx = useMemo(
         () => ({

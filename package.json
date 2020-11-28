@@ -1,6 +1,6 @@
 {
   "name": "use-stomp",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "react provider, class decorator, and a hook for websockets using the stomp protocol",
   "main": "cjs/index.js",
   "module": "esm/index.js",
