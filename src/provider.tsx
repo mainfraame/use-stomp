@@ -37,12 +37,10 @@ export type UseStompProviderProps = {
 };
 
 export default React.memo<UseStompProviderProps>((props) => {
-    const explicitDisconnect = useRef(false);
-    const retryCount = useRef(0);
-    const timeoutId = useRef<any>(null);
-
+    const [timeoutId, setTimeoutId] = useState(null);
+    const [retryCount, setRetryCount] = useState(0);
+    const [explicitDisconnect, setExplicitDisconnect] = useState(false);
     const [connected, setConnected] = useState(false);
-    const [subscriptions, setSubscriptions] = useState({});
 
     const [client, setClient] = useState<Client>(() =>
         Stomp.over(new SockJS(props.url, null, props.options), !!props.debug)
@@ -85,12 +83,6 @@ export default React.memo<UseStompProviderProps>((props) => {
         [props.parseMessage]
     );
 
-    const cleanUp = useCallback(() => {
-        setConnected(() => false);
-        retryCount.current = 0;
-        setSubscriptions(() => {});
-    }, []);
-
     const connect = useCallback(() => {
         client.connect(
             props.headers,
@@ -102,37 +94,49 @@ export default React.memo<UseStompProviderProps>((props) => {
                 console.error('[use-stomp::connection::error]', error);
 
                 if (connected) {
-                    cleanUp();
+                    setConnected(() => false);
+                    setRetryCount(() => 0);
                 }
 
-                if (!explicitDisconnect.current) {
-                    retryCount.current = retryCount.current + 1;
-                    timeoutId.current = setTimeout(
+                if (!explicitDisconnect) {
+                    setRetryCount((prev) => prev + 1);
+
+                    const timeoutId = setTimeout(
                         connect,
-                        getRetryInterval(retryCount.current)
+                        getRetryInterval(retryCount)
                     );
+
+                    setTimeoutId(() => timeoutId);
                 }
             }
         );
-    }, [client, connected, props.headers]);
+    }, [
+        client,
+        connected,
+        explicitDisconnect,
+        getRetryInterval,
+        props.headers,
+        retryCount
+    ]);
 
     const disconnect = useCallback(() => {
-        if (timeoutId.current) {
-            clearTimeout(timeoutId.current);
-            timeoutId.current = null;
+        if (timeoutId) {
+            clearTimeout(timeoutId);
+            setTimeoutId(() => null);
         }
 
         if (connected) {
-            explicitDisconnect.current = true;
+            setExplicitDisconnect(() => true);
         }
 
         if (connected) {
             client.disconnect(() => {
-                cleanUp();
+                setConnected(() => false);
+                setRetryCount(() => 0);
                 console.log('[use-stomp:disconnect]', 'disconnected');
             });
         }
-    }, [client, cleanUp, connected]);
+    }, [client.disconnect, connected, timeoutId]);
 
     const send = useCallback(
         (channel, msg, optHeaders = {}) => {
@@ -149,7 +153,7 @@ export default React.memo<UseStompProviderProps>((props) => {
                 );
             }
         },
-        [client, connected, packageMessage]
+        [client.send, connected, packageMessage]
     );
 
     const subscribe = useCallback(
@@ -172,25 +176,19 @@ export default React.memo<UseStompProviderProps>((props) => {
                 throw Error(e);
             }
         },
-        [
-            client,
-            disconnect,
-            parseMessage,
-            props.subscribeHeaders,
-            subscriptions
-        ]
+        [client.subscribe, disconnect, parseMessage, props.subscribeHeaders]
     );
 
     useEffect(() => {
-        if (props.headers) {
-            explicitDisconnect.current = false;
+        if (props.headers && !connected) {
+            setExplicitDisconnect(() => false);
             connect();
         }
 
         return () => {
             disconnect();
         };
-    }, [props.headers]);
+    }, [connected, props.headers]);
 
     useEffect(() => {
         return () => {
