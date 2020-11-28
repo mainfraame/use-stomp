@@ -84,12 +84,12 @@ export default React.memo<UseStompProviderProps>((props) => {
     );
 
     const onConnected = useCallback(() => {
-        console.log('[use-stomp]', '%cconnected', 'color:rgb(95,153,63)');
+        console.log('%c[use-stomp]::connected', 'color: rgb(95,153,63);');
         setConnected(() => true);
     }, []);
 
     const onDisconnected = useCallback(() => {
-        console.log('[use-stomp]', '%cdisconnected', 'color:rgb(170,34,23)');
+        console.log('%c[use-stomp]::disconnected', 'color: rgb(170,34,23);');
         setConnected(() => false);
         client.current = null;
     }, []);
