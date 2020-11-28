@@ -84,18 +84,18 @@ export default React.memo<UseStompProviderProps>((props) => {
     );
 
     const onConnected = useCallback(() => {
-        console.error('[use-stomp]::connected');
+        console.log('[use-stomp]', '%cconnected', 'color:rgb(95,153,63)');
         setConnected(() => true);
     }, []);
 
     const onDisconnected = useCallback(() => {
-        console.warn('[use-stomp]::disconnected');
+        console.log('[use-stomp]', '%cdisconnected', 'color:rgb(170,34,23)');
         setConnected(() => false);
         client.current = null;
     }, []);
 
     const onError = useCallback((error) => {
-        console.error('[use-stomp]', error);
+        console.error('[use-stomp]::error', error);
     }, []);
 
     const send = useCallback(
@@ -145,15 +145,15 @@ export default React.memo<UseStompProviderProps>((props) => {
     );
 
     useEffect(() => {
-        if (
-            (props.headers || props.authHeader) &&
-            !connected &&
-            !client.current?.connected
-        ) {
+        const hasHeaders = props.headers || props.authHeader;
+
+        if (hasHeaders && props.url && !connected) {
             client.current = Stomp.over(
                 new SockJS(props.url, null, props.options),
                 !!props.debug
-            )(client.current.connect as any)(
+            );
+
+            (client.current.connect as any)(
                 props.authHeader
                     ? {Authorization: props.authHeader}
                     : props.headers,
@@ -164,11 +164,11 @@ export default React.memo<UseStompProviderProps>((props) => {
         }
 
         return () => {
-            if (connected && client.current?.connected) {
+            if (connected && client.current) {
                 (client.current.disconnect as any)();
             }
         };
-    }, [connected, props.authHeader, props.headers]);
+    }, [connected, props.authHeader, props.headers, props.url]);
 
     const ctx = useMemo(
         () => ({
