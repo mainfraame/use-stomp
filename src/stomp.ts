@@ -251,57 +251,63 @@ const Client = (function () {
         }
     };
 
-    Client.prototype._parseConnect = function () {
-        const args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+    // Client.prototype._parseConnect = function () {
+    //     const args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+    //
+    //     let connectCallback;
+    //     let errorCallback;
+    //     let headers = {} as any;
+    //
+    //     switch (args.length) {
+    //         case 2:
+    //             (headers = args[0]), (connectCallback = args[1]);
+    //             break;
+    //         case 3:
+    //             if (args[1] instanceof Function) {
+    //                 (headers = args[0]),
+    //                     (connectCallback = args[1]),
+    //                     (errorCallback = args[2]);
+    //             } else {
+    //                 (headers.login = args[0]),
+    //                     (headers.passcode = args[1]),
+    //                     (connectCallback = args[2]);
+    //             }
+    //             break;
+    //         case 4:
+    //             (headers.login = args[0]),
+    //                 (headers.passcode = args[1]),
+    //                 (connectCallback = args[2]),
+    //                 (errorCallback = args[3]);
+    //             break;
+    //         default:
+    //             (headers.login = args[0]),
+    //                 (headers.passcode = args[1]),
+    //                 (connectCallback = args[2]),
+    //                 (errorCallback = args[3]),
+    //                 (headers.host = args[4]);
+    //     }
+    //     return [headers, connectCallback, errorCallback];
+    // };
 
-        let connectCallback;
-        let errorCallback;
-        let headers = {} as any;
+    Client.prototype.headers = null;
+    Client.prototype.connectCallback = () => {};
+    Client.prototype.disconnectCallback = () => {};
+    Client.prototype.errorCallback = () => {};
 
-        switch (args.length) {
-            case 2:
-                (headers = args[0]), (connectCallback = args[1]);
-                break;
-            case 3:
-                if (args[1] instanceof Function) {
-                    (headers = args[0]),
-                        (connectCallback = args[1]),
-                        (errorCallback = args[2]);
-                } else {
-                    (headers.login = args[0]),
-                        (headers.passcode = args[1]),
-                        (connectCallback = args[2]);
-                }
-                break;
-            case 4:
-                (headers.login = args[0]),
-                    (headers.passcode = args[1]),
-                    (connectCallback = args[2]),
-                    (errorCallback = args[3]);
-                break;
-            default:
-                (headers.login = args[0]),
-                    (headers.passcode = args[1]),
-                    (connectCallback = args[2]),
-                    (errorCallback = args[3]),
-                    (headers.host = args[4]);
-        }
-        return [headers, connectCallback, errorCallback];
-    };
-
-    Client.prototype.connect = function () {
-        var args, errorCallback, headers, out;
-
-        args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-
-        out = this._parseConnect.apply(this, args);
-
-        (headers = out[0]),
-            (this.connectCallback = out[1]),
-            (errorCallback = out[2]);
+    Client.prototype.connect = function (
+        headers,
+        connectCallback,
+        disconnectCallback,
+        errorCallback
+    ) {
         if (typeof this.debug === 'function') {
             this.debug('Opening Web Socket...');
         }
+
+        this.headers = headers;
+        this.errorCallback = errorCallback;
+        this.connectCallback = connectCallback;
+        this.disconnectCallback = disconnectCallback;
 
         this.ws.onmessage = (function (_this) {
             return function (evt) {
@@ -415,8 +421,8 @@ const Client = (function () {
                             break;
                         case 'ERROR':
                             _results.push(
-                                typeof errorCallback === 'function'
-                                    ? errorCallback(frame)
+                                typeof _this.errorCallback === 'function'
+                                    ? _this.errorCallback(frame)
                                     : void 0
                             );
                             break;
@@ -433,14 +439,13 @@ const Client = (function () {
         })(this);
         this.ws.onclose = (function (_this) {
             return function () {
-                var msg;
-                msg = 'Whoops! Lost connection to ' + _this.ws.url;
+                const msg = 'Whoops! Lost connection to ' + _this.ws.url;
                 if (typeof _this.debug === 'function') {
                     _this.debug(msg);
                 }
                 _this._cleanUp();
-                return typeof errorCallback === 'function'
-                    ? errorCallback(msg)
+                return typeof disconnectCallback === 'function'
+                    ? disconnectCallback()
                     : void 0;
             };
         })(this);
@@ -449,27 +454,34 @@ const Client = (function () {
                 if (typeof _this.debug === 'function') {
                     _this.debug('Web Socket Opened...');
                 }
-                headers['accept-version'] = Stomp.VERSIONS.supportedVersions();
-                headers['heart-beat'] = [
+                _this.headers[
+                    'accept-version'
+                ] = Stomp.VERSIONS.supportedVersions();
+                _this.headers['heart-beat'] = [
                     _this.heartbeat.outgoing,
                     _this.heartbeat.incoming
                 ].join(',');
-                return _this._transmit('CONNECT', headers);
+                return _this._transmit('CONNECT', _this.headers);
             };
         })(this));
     };
 
-    Client.prototype.disconnect = function (disconnectCallback, headers) {
-        if (headers == null) {
-            headers = {};
+    Client.prototype.disconnect = function () {
+        if (this.headers == null) {
+            this.headers = {};
         }
-        this._transmit('DISCONNECT', headers);
+        this._transmit('DISCONNECT', this.headers);
         this.ws.onclose = null;
         this.ws.close();
         this._cleanUp();
-        return typeof disconnectCallback === 'function'
-            ? disconnectCallback()
-            : void 0;
+
+        if (typeof this.disconnectCallback === 'function') {
+            this.disconnectCallback();
+        }
+
+        this.connectCallback = function () {};
+        this.disconnectCallback = function () {};
+        this.errorCallback = function () {};
     };
 
     Client.prototype._cleanUp = function () {

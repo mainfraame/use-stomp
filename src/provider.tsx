@@ -19,6 +19,10 @@ export type UseStompProviderProps = {
      */
     options?: Options;
     /**
+     * The request auth header will be passed to the server or agent through the STOMP connection frame
+     */
+    authHeader?: string;
+    /**
      * The request header will be passed to the server or agent through the STOMP connection frame
      */
     headers?: Record<string, unknown>;
@@ -37,30 +41,26 @@ export type UseStompProviderProps = {
 };
 
 export default React.memo<UseStompProviderProps>((props) => {
-    const [timeoutId, setTimeoutId] = useState(null);
-    const [retryCount, setRetryCount] = useState(0);
-    const [explicitDisconnect, setExplicitDisconnect] = useState(false);
+    const client = useRef<Client>(null);
+
     const [connected, setConnected] = useState(false);
 
-    const [client, setClient] = useState<Client>(() =>
-        Stomp.over(new SockJS(props.url, null, props.options), !!props.debug)
+    const packageMessage = useCallback(
+        (channel, msg, optHeaders) => {
+            if (props.packageMessage) {
+                return props.packageMessage(channel, msg, optHeaders);
+            }
+
+            try {
+                return typeof msg === 'object' && msg !== null
+                    ? JSON.stringify(msg)
+                    : msg;
+            } catch (e) {
+                return msg;
+            }
+        },
+        [props.packageMessage]
     );
-
-    const getRetryInterval = useCallback((count) => 1000 * count, []);
-
-    const packageMessage = useCallback((channel, msg, optHeaders) => {
-        if (props.packageMessage) {
-            return props.packageMessage(channel, msg, optHeaders);
-        }
-
-        try {
-            return typeof msg === 'object' && msg !== null
-                ? JSON.stringify(msg)
-                : msg;
-        } catch (e) {
-            return msg;
-        }
-    }, []);
 
     const parseMessage = useCallback(
         (channel, msg) => {
@@ -83,65 +83,25 @@ export default React.memo<UseStompProviderProps>((props) => {
         [props.parseMessage]
     );
 
-    const connect = useCallback(() => {
-        client.connect(
-            props.headers,
-            () => {
-                console.log('[use-stomp::connection::success]');
-                setConnected(() => true);
-            },
-            (error: any) => {
-                console.error('[use-stomp::connection::error]', error);
+    const onConnected = useCallback(() => {
+        console.error('[use-stomp]::connected');
+        setConnected(() => true);
+    }, []);
 
-                if (connected) {
-                    setConnected(() => false);
-                    setRetryCount(() => 0);
-                }
+    const onDisconnected = useCallback(() => {
+        console.warn('[use-stomp]::disconnected');
+        setConnected(() => false);
+        client.current = null;
+    }, []);
 
-                if (!explicitDisconnect) {
-                    setRetryCount((prev) => prev + 1);
-
-                    const timeoutId = setTimeout(
-                        connect,
-                        getRetryInterval(retryCount)
-                    );
-
-                    setTimeoutId(() => timeoutId);
-                }
-            }
-        );
-    }, [
-        client,
-        connected,
-        explicitDisconnect,
-        getRetryInterval,
-        props.headers,
-        retryCount
-    ]);
-
-    const disconnect = useCallback(() => {
-        if (timeoutId) {
-            clearTimeout(timeoutId);
-            setTimeoutId(() => null);
-        }
-
-        if (connected) {
-            setExplicitDisconnect(() => true);
-        }
-
-        if (connected) {
-            client.disconnect(() => {
-                setConnected(() => false);
-                setRetryCount(() => 0);
-                console.log('[use-stomp:disconnect]', 'disconnected');
-            });
-        }
-    }, [client.disconnect, connected, timeoutId]);
+    const onError = useCallback((error) => {
+        console.error('[use-stomp]', error);
+    }, []);
 
     const send = useCallback(
         (channel, msg, optHeaders = {}) => {
             if (connected) {
-                client.send(
+                client.current.send(
                     channel,
                     optHeaders,
                     packageMessage(channel, msg, optHeaders)
@@ -153,13 +113,13 @@ export default React.memo<UseStompProviderProps>((props) => {
                 );
             }
         },
-        [client.send, connected, packageMessage]
+        [client.current, connected, packageMessage]
     );
 
     const subscribe = useCallback(
         (channel, callback) => {
             try {
-                return client.subscribe(
+                return client.current.subscribe(
                     channel,
                     (msg: any) => {
                         const body = parseMessage(channel, msg.body);
@@ -167,7 +127,7 @@ export default React.memo<UseStompProviderProps>((props) => {
                         callback(body, msg.headers.destination);
 
                         if (body && body.status === 'END') {
-                            disconnect();
+                            (client.current.disconnect as any)();
                         }
                     },
                     props.subscribeHeaders
@@ -176,25 +136,39 @@ export default React.memo<UseStompProviderProps>((props) => {
                 throw Error(e);
             }
         },
-        [client.subscribe, disconnect, parseMessage, props.subscribeHeaders]
+        [
+            client.current?.disconnect,
+            client.current?.subscribe,
+            parseMessage,
+            props.subscribeHeaders
+        ]
     );
 
     useEffect(() => {
-        if (props.headers && !connected) {
-            setExplicitDisconnect(() => false);
-            connect();
+        if (
+            (props.headers || props.authHeader) &&
+            !connected &&
+            !client.current?.connected
+        ) {
+            client.current = Stomp.over(
+                new SockJS(props.url, null, props.options),
+                !!props.debug
+            )(client.current.connect as any)(
+                props.authHeader
+                    ? {Authorization: props.authHeader}
+                    : props.headers,
+                onConnected,
+                onDisconnected,
+                onError
+            );
         }
 
         return () => {
-            disconnect();
+            if (connected && client.current?.connected) {
+                (client.current.disconnect as any)();
+            }
         };
-    }, [connected, props.headers]);
-
-    useEffect(() => {
-        return () => {
-            setClient(() => null);
-        };
-    }, []);
+    }, [connected, props.authHeader, props.headers]);
 
     const ctx = useMemo(
         () => ({
