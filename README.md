@@ -43,12 +43,12 @@ import {useStomp} from 'use-stomp';
 
 const ExampleDecorator = () => {
     
-    const [message,send] = useStomp('channel');
+    const [message, send] = useStomp('channel');
 
     return (
 
         <>
-            <button onClick={() => send()}>
+            <button onClick={() => send('my other message')}>
                send
             </button>
 
@@ -62,6 +62,7 @@ const ExampleDecorator = () => {
 
 ## Provider - < [UseStompProvider](./src/provider.tsx) >
 
+This is the non shared-worker provider.
 Please see the typescript definition for the provider; it has notes regarding all the properties available.
 
 ```typescript jsx
@@ -70,17 +71,42 @@ import {UseStompProvider} from 'use-stomp';
 
 const App = () => {
 
-    const [headers] = useState({
+    const [authHeaders] = useState({
         Authorization: 'auth-token'
     })
 
     return (
         <UseStompProvider
             debug // <-- enable debugging
-            headers={headers}
+            authHeaders={authHeaders}
             url='ws://ws-endpoint'>
             {/* rest of app */}
         </UseStompProvider>
+    )
+}
+```
+
+## Provider (Shared Worker) - < [UseStompWorkerProvider](./src/workerProvider.tsx) >
+
+This is the shared-worker provider.
+Please see the typescript definition for the provider; it has notes regarding all the properties available.
+
+```typescript jsx
+import React, {useState} from 'react';
+import {UseStompWorkerProvider} from 'use-stomp';
+
+const App = () => {
+
+    const [authHeaders] = useState({
+        Authorization: 'auth-token'
+    })
+
+    return (
+        <UseStompWorkerProvider
+            authHeaders={authHeaders}
+            url='ws://ws-endpoint'>
+            {/* rest of app */}
+        </UseStompWorkerProvider>
     )
 }
 ```

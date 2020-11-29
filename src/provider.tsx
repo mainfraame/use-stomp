@@ -131,7 +131,7 @@ export default React.memo<UseStompProviderProps>((props) => {
                         }
                     },
                     props.subscribeHeaders
-                );
+                ).unsubscribe;
             } catch (e) {
                 throw Error(e);
             }

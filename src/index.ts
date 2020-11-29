@@ -4,3 +4,7 @@ export {default as withUseStomp} from './decorator';
 export {default as useStomp, useStompCtx} from './hook';
 export {default as UseStompProvider} from './provider';
 export type {UseStompProviderProps} from './provider';
+export {default as UseStompWorkerProvider} from './workerProvider';
+export type {UseStompWorkerProviderProps} from './workerProvider';
+export {default as WebSocketWorker} from './webSocketWorker';
+export type {WebSocketWorkerProps} from './webSocketWorker';
