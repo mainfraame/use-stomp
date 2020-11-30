@@ -1,48 +1,121 @@
 # < use-stomp >
 
-react provider, decorator, and a hook for websockets with the stomp protocol.
+react providers, decorators, and hooks for handling websockets using the stomp protocol.
 
-## Context - < [UseStompCtx](./src/context.ts) >
+## Components
 
-The context contains a function to subscribe to a given channel and a function to send a message to a channel. See the notes in the typescript definition file.
+## Providers 
 
-## Decorator - < [withStomp](./src/decorator.tsx) >
+### < [UseStompWorkerProvider](src/useStompNotificationsProvider.tsx) >
 
-The decorator allows you to use the useStomp hook with legacy class-based components.
+This is the shared-worker provider. It connects to the websocket (stomp), and controls the queueing of a notifications.
+The list is based on the messages received from the websocket channel.
+
+- queueing/dismissal management
+- cross tab/window syncing of notifications
+
+Please see the typescript definition for the provider for the full list of props.
+
+```typescript jsx
+import React, {useState} from 'react';
+import {UseStompWorkerProvider} from 'use-stomp';
+
+const App = () => {
+
+    const [authHeaders] = useState({
+        Authorization: 'auth-token'
+    })
+
+    return (
+        <UseStompWorkerProvider
+            authHeaders={authHeaders}
+            url='ws://ws-endpoint'>
+            <App/>
+        </UseStompWorkerProvider>
+    )
+}
+```
+
+Make sure your public/dist folder contains the [webSocketWorkerInstance.js](./webSocketWorkerInstance.js) AND
+the [webSocketWorkerInstance.js.map](./webSocketWorkerInstance.js.map) files:
+
+```
+node_modules/use-stomp/webSocketWorkerInstance.js
+node_modules/use-stomp/webSocketWorkerInstance.js.map
+```
+
+
+### < [UseStompProvider](src/useStompProvider.tsx) >
+
+This is the non shared-worker provider, and does not provide any queueing functionality. Instead, 
+it provides a way to subscribe to messages and send messages to channels.
+
+Please see the typescript definition for the provider; it has notes regarding all the properties available.
+
+```typescript jsx
+import React, {useState} from 'react';
+import {UseStompProvider} from 'use-stomp';
+
+const App = () => {
+
+    const [authHeaders] = useState({
+        Authorization: 'auth-token'
+    })
+
+    return (
+        <UseStompProvider
+            authHeaders={authHeaders}
+            url='ws://ws-endpoint'>
+            <App/>
+        </UseStompProvider>
+    )
+}
+```
+
+
+## Hooks
+
+### [useStompNotifications](./src/useStompNotifications.ts)
+
+\* This only works with [useStompNotificationsProvider](src/useStompNotificationsProvider.tsx)
 
 ```typescript jsx
 import React from 'react';
-import {withUseStomp} from 'use-stomp';
+import {useStompNotifications} from 'use-stomp';
 
-@withUseStomp('channel')
-class ExampleDecorator extends React.Component {
+export default () => {
 
-    _sendMesage = () => {
-        this.props.sendMessage('test message')
-    }
+    const [list, ,connected] = useStompNotifications('channel');
 
     return (
         <>
-            <button onClick={this._sendMesage}>
-               send
-            </button>
+            <h4>Status: {connected}</h4>
 
-            <h4>Latest Message</h4>
+            <h4>Notifications:</h4>
 
-            <div>{this.props.message}</div>
+            <ul>
+                {list.map((item) => (
+                    <li key={item.id}>
+                       <button 
+                          onClick={item.dismiss}>
+                          X
+                        </button>
+                    </li>
+                ))}
+            </ul>
         </>
     )
 }
 ```
 
-## Hook - < [useStomp](./src/hook.ts) >
+### [useStomp](./src/useStomp.ts)
 
 ```typescript jsx
 import React from 'react';
 import {useStomp} from 'use-stomp';
 
-const ExampleDecorator = () => {
-    
+export default () => {
+
     const [message, send] = useStomp('channel');
 
     return (
@@ -60,53 +133,73 @@ const ExampleDecorator = () => {
 }
 ```
 
-## Provider - < [UseStompProvider](./src/provider.tsx) >
+### [UseStompCtx](./src/useStompCtx.ts)
 
-This is the non shared-worker provider.
-Please see the typescript definition for the provider; it has notes regarding all the properties available.
+If you need direct access to the context, use this hook.
+
+## Decorators
+
+### [@withUseStomp](src/withUseStomp.tsx)
+
+The decorator allows you to use the useStomp hook with legacy class-based components.
 
 ```typescript jsx
-import React, {useState} from 'react';
-import {UseStompProvider} from 'use-stomp';
+import React from 'react';
+import {withUseStomp} from 'use-stomp';
 
-const App = () => {
+@withUseStomp('/message/channel')
+class ExampleDecorator extends React.Component {
 
-    const [authHeaders] = useState({
-        Authorization: 'auth-token'
-    })
+    _sendMesage = () => {
+        this.props.sendMessage('test')
+    }
 
     return (
-        <UseStompProvider
-            debug // <-- enable debugging
-            authHeaders={authHeaders}
-            url='ws://ws-endpoint'>
-            {/* rest of app */}
-        </UseStompProvider>
+        <>
+            <button onClick={this._sendMesage}>
+               send
+            </button>
+
+            <h4>Latest Message</h4>
+
+            <div>{this.props.message}</div>
+        </>
     )
 }
 ```
 
-## Provider (Shared Worker) - < [UseStompWorkerProvider](./src/workerProvider.tsx) >
+### [@withUseStomp](src/withUseStomp.tsx)
 
-This is the shared-worker provider.
-Please see the typescript definition for the provider; it has notes regarding all the properties available.
+This decorator provides decorates your component with the props provided by ```useStompNotifications```. For use with legacy class-based components
 
 ```typescript jsx
-import React, {useState} from 'react';
-import {UseStompWorkerProvider} from 'use-stomp';
+import React from 'react';
+import {withUseStompNotifications} from 'use-stomp';
 
-const App = () => {
+@withUseStompNotifications('/message/channel')
+class ExampleDecorator extends React.Component {
 
-    const [authHeaders] = useState({
-        Authorization: 'auth-token'
-    })
+    _sendMesage = () => {
+        this.props.sendMessage('test')
+    }
 
     return (
-        <UseStompWorkerProvider
-            authHeaders={authHeaders}
-            url='ws://ws-endpoint'>
-            {/* rest of app */}
-        </UseStompWorkerProvider>
+        <>
+            <h4>Status: {this.props.connected}</h4>
+
+            <h4>Notifications:</h4>
+
+            <ul>
+                {this.props.list.map((item) => (
+                    <li key={item.id}>
+                       <button 
+                          onClick={item.dismiss}>
+                          X
+                        </button>
+                    </li>
+                ))}
+            </ul>
+        </>
     )
 }
 ```

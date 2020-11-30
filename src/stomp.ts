@@ -149,8 +149,9 @@ const Client = (function () {
             return;
         }
 
-        return typeof window !== 'undefined' && window !== null
-            ? (_ref = window.console) != null
+        return typeof (window || self) !== 'undefined' &&
+            (window || self) !== null
+            ? (_ref = (window || self).console) != null
                 ? _ref.log(message)
                 : void 0
             : void 0;
@@ -250,44 +251,6 @@ const Client = (function () {
             ));
         }
     };
-
-    // Client.prototype._parseConnect = function () {
-    //     const args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
-    //
-    //     let connectCallback;
-    //     let errorCallback;
-    //     let headers = {} as any;
-    //
-    //     switch (args.length) {
-    //         case 2:
-    //             (headers = args[0]), (connectCallback = args[1]);
-    //             break;
-    //         case 3:
-    //             if (args[1] instanceof Function) {
-    //                 (headers = args[0]),
-    //                     (connectCallback = args[1]),
-    //                     (errorCallback = args[2]);
-    //             } else {
-    //                 (headers.login = args[0]),
-    //                     (headers.passcode = args[1]),
-    //                     (connectCallback = args[2]);
-    //             }
-    //             break;
-    //         case 4:
-    //             (headers.login = args[0]),
-    //                 (headers.passcode = args[1]),
-    //                 (connectCallback = args[2]),
-    //                 (errorCallback = args[3]);
-    //             break;
-    //         default:
-    //             (headers.login = args[0]),
-    //                 (headers.passcode = args[1]),
-    //                 (connectCallback = args[2]),
-    //                 (errorCallback = args[3]),
-    //                 (headers.host = args[4]);
-    //     }
-    //     return [headers, connectCallback, errorCallback];
-    // };
 
     Client.prototype.headers = null;
     Client.prototype.connectCallback = () => {};
@@ -608,10 +571,10 @@ const Stomp = {
         return new Client(ws, debug);
     },
     setInterval: function (interval, f) {
-        return window.setInterval(f, interval);
+        return (self || window).setInterval(f, interval);
     },
     clearInterval: function (id) {
-        return window.clearInterval(id);
+        return (self || window).clearInterval(id);
     },
     Frame
 };

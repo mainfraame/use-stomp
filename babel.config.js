@@ -22,6 +22,7 @@ module.exports = (app) => {
                     isTSX: true
                 }
             ],
+            'babel-plugin-macros',
             '@babel/plugin-transform-runtime'
         ]
     };

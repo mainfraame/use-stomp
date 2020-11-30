@@ -1,27 +1,31 @@
 import {v4} from 'uuid';
 
 import {Events, States} from './webSocketConfigs';
-import worker from './worker';
 
 export type WebSocketWorkerProps = {
     onConnected?(): void;
     onDisconnected?(): void;
+    onSyncState?(state: any): void;
     url?: string;
 };
 
 export default class WebSocketWorker extends SharedWorker {
     _channels = {};
 
+    _connected = false;
+
     _id = v4();
 
-    _onConnected;
+    _onConnected = () => {};
 
-    _onDisconnected;
+    _onDisconnected = () => {};
 
-    _webSocketState = States.DISCONNECTED;
+    _onSyncState = (state: any) => {};
+
+    _syncChannels = {};
 
     constructor(props?: WebSocketWorkerProps) {
-        super(URL.createObjectURL(new Blob([`(` + worker.toString() + ')()'])));
+        super('webSocketWorkerInstance.js');
 
         if (props?.onConnected) {
             this._onConnected = props.onConnected;
@@ -31,9 +35,13 @@ export default class WebSocketWorker extends SharedWorker {
             this._onDisconnected = props.onDisconnected;
         }
 
+        if (props?.onSyncState) {
+            this._onSyncState = props.onSyncState;
+        }
+
         this.port.start();
 
-        this.port.addEventListener('message', this._onWorkerEvent);
+        this.port.addEventListener('message', this._onMessage);
 
         this._register();
 
@@ -41,6 +49,7 @@ export default class WebSocketWorker extends SharedWorker {
             this.setUrl(props.url);
         }
 
+        document.addEventListener('visibilitychange', this._setVisibility);
         window.addEventListener('beforeunload', this._unregister);
     }
 
@@ -53,6 +62,16 @@ export default class WebSocketWorker extends SharedWorker {
     disconnect = () => {
         this.port.postMessage({
             type: Events.DISCONNECT
+        });
+    };
+
+    dismiss = (channel, id) => {
+        this.port.postMessage({
+            type: Events.DISMISS_SYNC,
+            payload: {
+                channel,
+                id
+            }
         });
     };
 
@@ -91,19 +110,19 @@ export default class WebSocketWorker extends SharedWorker {
         channel: string,
         callback: (message: any) => void
     ): (() => void) => {
-        if (!this._channels[channel]) {
+        if (!(this._channels[channel] || []).length) {
             this._channels[channel] = [callback];
+
+            this.port.postMessage({
+                type: Events.SUBSCRIBE,
+                payload: {
+                    id: this._id,
+                    channel
+                }
+            });
         } else {
             this._channels[channel] = [...this._channels[channel], callback];
         }
-
-        this.port.postMessage({
-            type: Events.SUBSCRIBE,
-            payload: {
-                id: this._id,
-                channel
-            }
-        });
 
         return () => {
             this._channels[channel] = (this._channels[channel] || []).filter(
@@ -112,6 +131,38 @@ export default class WebSocketWorker extends SharedWorker {
 
             if (!this._channels[channel].length) {
                 this.unsubscribe(channel);
+            }
+        };
+    };
+
+    subscribeSync = (
+        channel: string,
+        callback: (message: any) => void
+    ): (() => void) => {
+        if (!(this._syncChannels[channel] || []).length) {
+            this._syncChannels[channel] = [callback];
+
+            this.port.postMessage({
+                type: Events.SUBSCRIBE_SYNC,
+                payload: {
+                    id: this._id,
+                    channel
+                }
+            });
+        } else {
+            this._syncChannels[channel] = [
+                ...this._syncChannels[channel],
+                callback
+            ];
+        }
+
+        return () => {
+            this._syncChannels[channel] = (
+                this._syncChannels[channel] || []
+            ).filter((fn) => fn !== callback);
+
+            if (!this._syncChannels[channel].length) {
+                this.unsubscribeSync(channel);
             }
         };
     };
@@ -126,7 +177,17 @@ export default class WebSocketWorker extends SharedWorker {
         });
     };
 
-    _onWorkerEvent = (event) => {
+    unsubscribeSync = (channel) => {
+        this.port.postMessage({
+            type: Events.UNSUBSCRIBE_SYNC,
+            payload: {
+                id: this._id,
+                channel
+            }
+        });
+    };
+
+    _onMessage = (event) => {
         if (this._workerEvents[event.data.type]) {
             this._workerEvents[event.data.type](event);
         }
@@ -135,50 +196,90 @@ export default class WebSocketWorker extends SharedWorker {
     _register = () => {
         this.port.postMessage({
             type: Events.REGISTER,
-            payload: this._id
+            payload: {
+                id: this._id,
+                visibility: document.visibilityState === 'visible'
+            }
         });
     };
 
-    _setWorkerError = (event) => {
+    _setError = (event) => {
         console.error('[use-stomp]', event.data.payload);
     };
 
-    _setWorkerMessage = (event) => {
+    _setVisibility = () => {
+        this.port.postMessage({
+            type: Events.SET_VISIBILITY,
+            payload: {
+                id: this._id,
+                visibility: document.visibilityState === 'visible'
+            }
+        });
+    };
+
+    _setMessage = (event) => {
         if (this._channels[event.data.payload.channel]) {
-            this._channels[event.data.payload.channel](
-                event.data.payload.message
+            this._channels[event.data.payload.channel].forEach((fn) =>
+                fn(event.data.payload.message)
             );
         }
+
+        if (this._syncChannels[event.data.payload.channel]) {
+            this._syncChannels[event.data.payload.channel].forEach((fn) => {
+                fn(
+                    (event.data.payload.message || []).map((item) => ({
+                        ...item,
+                        dismiss: () =>
+                            this.dismiss(event.data.payload.channel, item.id)
+                    }))
+                );
+            });
+        }
     };
-    _setWorkerState = (event) => {
-        this._webSocketState = event.data.payload;
+
+    _setConnection = (event) => {
+        const wasConnected = !!this._connected;
 
         switch (event.data.payload) {
             case States.CONNECTED:
-                if (this._onConnected) {
-                    this._onConnected();
-                }
+                this._connected = true;
+                break;
+            case States.CONNECTING:
+                this._connected = false;
                 break;
             case States.DISCONNECTED:
-                if (this._onDisconnected) {
-                    this._onDisconnected();
-                }
+                this._connected = false;
                 break;
+            case States.DISCONNECTING:
+                this._connected = false;
+                break;
+        }
+
+        if (!wasConnected && this._connected) {
+            this._onConnected();
+        }
+
+        if (wasConnected && !this._connected) {
+            this._onDisconnected();
         }
     };
 
     _unregister = () => {
-        this.port.removeEventListener('message', this._onWorkerEvent);
+        this.port.removeEventListener('message', this._onMessage);
 
         this.port.postMessage({
             type: Events.UNREGISTER,
-            payload: this._id
+            payload: {
+                id: this._id
+            }
         });
+
+        document.removeEventListener('visibilitychange', this._setVisibility);
     };
 
     _workerEvents = {
-        [Events.SET_WS_STATE]: this._setWorkerState,
-        [Events.ERROR]: this._setWorkerError,
-        [Events.MESSAGE]: this._setWorkerMessage
+        [Events.CONNECTION]: this._setConnection,
+        [Events.ERROR]: this._setError,
+        [Events.MESSAGE]: this._setMessage
     };
 }

@@ -17,6 +17,11 @@ rm -rf ${BUILD_FOLDER_CJS}/*
 echo "removing ${BUILD_FOLDER_ESM} directory"
 rm -rf ${BUILD_FOLDER_ESM}/*
 
+echo "building worker"
+eval npm run build:worker 2>&1 &
+
+wait
+
 echo "building types"
 $(npm bin)/tsc --emitDeclarationOnly 2>&1
 $(npm bin)/tsc --emitDeclarationOnly --declarationDir	esm 2>&1
