@@ -16,8 +16,12 @@ export type UseStompCtxProps<T = any> = {
     subscribeSync?(
         /** channel to subscribe to */
         channel: string,
-        /** callback for when message is received */
-        callback: (list: StompNotification<T>[]) => void
+        /** callback for when message is received; includes added and removed */
+        callback: (
+            messages: StompNotification<any>[],
+            added: StompNotification<any>[],
+            removed: StompNotification<any>[]
+        ) => void
     ): () => void /** returns unsubscribe callback */;
     /**
      * dismiss a message in list

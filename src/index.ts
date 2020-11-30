@@ -6,7 +6,8 @@ export {useStompCtx} from './useStompCtx';
 export {default as useStompNotifications} from './useStompNotifications';
 export type {
     StompNotification,
-    UseStompNotificationsProps
+    UseStompNotificationsProps,
+    StompNotistackOptions
 } from './useStompNotifications';
 export {default as UseStompNotificationsProvider} from './useStompNotificationsProvider';
 export type {UseStompNotificationsProviderProps} from './useStompNotificationsProvider';

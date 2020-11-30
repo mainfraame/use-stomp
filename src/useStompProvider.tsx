@@ -27,10 +27,6 @@ export type UseStompProviderProps = {
      */
     headers?: Record<string, unknown>;
     /**
-     * The request header that will be passed when subscribing to the target
-     */
-    subscribeHeaders?: Record<string, unknown>;
-    /**
      * override default parsing of messages
      */
     parseMessage?(channel: string, msg: any): any;
@@ -38,6 +34,10 @@ export type UseStompProviderProps = {
      * override default packaging of messages
      */
     packageMessage?(channel: string, msg: any, optHeaders: any): any;
+    /**
+     * The request header that will be passed when subscribing to the target
+     */
+    subscribeHeaders?: Record<string, unknown>;
 };
 
 export default React.memo<UseStompProviderProps>((props) => {
@@ -84,18 +84,18 @@ export default React.memo<UseStompProviderProps>((props) => {
     );
 
     const onConnected = useCallback(() => {
-        console.log('%c[use-stomp]::connected', 'color: rgb(95,153,63);');
+        console.log('%c[use-stomp::connected]', 'color: rgb(95,153,63);');
         setConnected(() => true);
     }, []);
 
     const onDisconnected = useCallback(() => {
-        console.log('%c[use-stomp]::disconnected', 'color: rgb(170,34,23);');
+        console.log('%c[use-stomp::disconnected]', 'color: rgb(170,34,23);');
         setConnected(() => false);
         client.current = null;
     }, []);
 
     const onError = useCallback((error) => {
-        console.error('[use-stomp]::error', error);
+        console.error('[use-stomp::error]', error);
     }, []);
 
     const send = useCallback(
@@ -108,7 +108,7 @@ export default React.memo<UseStompProviderProps>((props) => {
                 );
             } else {
                 console.warn(
-                    '[use-stomp:send]',
+                    '[use-stomp::send]',
                     'cannot send when websocket is not connected'
                 );
             }

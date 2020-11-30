@@ -1,6 +1,6 @@
 import {w3cwebsocket as WebSocketClass} from 'websocket';
 const __hasProp = {}.hasOwnProperty;
-const __slice = [].slice;
+// const __slice = [].slice;
 
 const Byte = {
     LF: '\x0A',
@@ -429,7 +429,7 @@ const Client = (function () {
         })(this));
     };
 
-    Client.prototype.disconnect = function () {
+    Client.prototype.disconnect = function (callback?: () => void) {
         if (this.headers == null) {
             this.headers = {};
         }
@@ -437,6 +437,10 @@ const Client = (function () {
         this.ws.onclose = null;
         this.ws.close();
         this._cleanUp();
+
+        if (callback) {
+            callback();
+        }
 
         if (typeof this.disconnectCallback === 'function') {
             this.disconnectCallback();

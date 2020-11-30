@@ -9,6 +9,7 @@ type WEBSOCKET_CONNECTION = {
     WEBSOCKET: Client;
     WEBSOCKET_AUTH_HEADER: string;
     WEBSOCKET_CONNECTION: string;
+    WEBSOCKET_EXPLICIT_DISCONNECT: boolean;
     WEBSOCKET_HEADER: string;
     WEBSOCKET_URL: string;
     WEBSOCKET_STATE: {
@@ -16,6 +17,10 @@ type WEBSOCKET_CONNECTION = {
     };
     WEBSOCKET_PORTS: Map<string, MessagePort>;
     WEBSOCKET_CHANNELS: Map<string, Subscription>;
+    WEBSOCKET_RECONNECT_COUNT: number;
+    WEBSOCKET_RECONNECT_INTERVAL: NodeJS.Timer;
+    WEBSOCKET_RECONNECT_INTERVAL_MS: number;
+    WEBSOCKET_RECONNECT_MAX_ATTEMPTS: number;
     WEBSOCKET_SUBSCRIPTIONS: Map<string, string[]>;
     WEBSOCKET_VISIBLE_TABS: Set<string>;
 };
@@ -37,10 +42,15 @@ const ctx: WEBSOCKET_CONNECTION = {
     WEBSOCKET_AUTH_HEADER: '',
     WEBSOCKET_CONNECTION: States.DISCONNECTED,
     WEBSOCKET_HEADER: '',
+    WEBSOCKET_EXPLICIT_DISCONNECT: false,
     WEBSOCKET_URL: '',
     WEBSOCKET_STATE: {},
     WEBSOCKET_PORTS: new Map(),
     WEBSOCKET_CHANNELS: new Map(),
+    WEBSOCKET_RECONNECT_COUNT: 0,
+    WEBSOCKET_RECONNECT_INTERVAL: null,
+    WEBSOCKET_RECONNECT_INTERVAL_MS: 10000,
+    WEBSOCKET_RECONNECT_MAX_ATTEMPTS: 10,
     WEBSOCKET_SUBSCRIPTIONS: new Map(),
     WEBSOCKET_VISIBLE_TABS: new Set()
 };
@@ -84,6 +94,8 @@ const emit = (id, type, payload, onlyVisible = false) => {
 };
 
 const onConnected = () => {
+    console.log('[use-stomp::ws::connected]');
+
     resubscribeAll();
 
     setState(States.CONNECTED);
@@ -121,7 +133,7 @@ const onChannelMessageSync = (channel) => (msg) => {
             }
         ];
 
-        ctx.WEBSOCKET_SUBSCRIPTIONS.get(channel).forEach((id) => {
+        (ctx.WEBSOCKET_SUBSCRIPTIONS.get(channel) || []).forEach((id) => {
             emit(id, Events.MESSAGE, {
                 channel,
                 message: ctx.WEBSOCKET_STATE[channel]
@@ -135,18 +147,59 @@ const onDismissSync = (e) => {
         e.data.payload.channel
     ].filter((message) => message.id !== e.data.payload.id);
 
-    console.log('list state', ctx.WEBSOCKET_STATE[e.data.payload.channel]);
-
-    ctx.WEBSOCKET_SUBSCRIPTIONS.get(e.data.payload.channel).forEach((id) => {
-        emit(id, Events.MESSAGE, {
-            channel: e.data.payload.channel,
-            message: ctx.WEBSOCKET_STATE[e.data.payload.channel]
-        });
-    });
+    (ctx.WEBSOCKET_SUBSCRIPTIONS.get(e.data.payload.channel) || []).forEach(
+        (id) => {
+            emit(id, Events.MESSAGE, {
+                channel: e.data.payload.channel,
+                message: ctx.WEBSOCKET_STATE[e.data.payload.channel]
+            });
+        }
+    );
 };
 
 const onDisconnected = () => {
+    console.log('[use-stomp::ws::disconnected]');
+
     setState(States.DISCONNECTED);
+
+    if (
+        !ctx.WEBSOCKET_EXPLICIT_DISCONNECT &&
+        !ctx.WEBSOCKET_RECONNECT_INTERVAL &&
+        !ctx.WEBSOCKET_RECONNECT_COUNT
+    ) {
+        ctx.WEBSOCKET_RECONNECT_COUNT = 1;
+
+        const maxAttempts = ctx.WEBSOCKET_RECONNECT_MAX_ATTEMPTS;
+
+        const reconnect = () => {
+            console.log(
+                '[use-stomp::ws::reconnecting]',
+                `${ctx.WEBSOCKET_RECONNECT_COUNT} / ${maxAttempts}`
+            );
+
+            const hasMaxAttempts = ctx.WEBSOCKET_RECONNECT_COUNT > maxAttempts;
+
+            const canTerminate = isConnected() || hasMaxAttempts;
+
+            if (canTerminate) {
+                console.log('[use-stomp::ws::reconnected]');
+                clearInterval(ctx.WEBSOCKET_RECONNECT_INTERVAL);
+                ctx.WEBSOCKET_RECONNECT_COUNT = 0;
+                ctx.WEBSOCKET_RECONNECT_INTERVAL = null;
+            } else if (!isConnecting() && !isConnected() && !hasMaxAttempts) {
+                ctx.WEBSOCKET_RECONNECT_COUNT =
+                    ctx.WEBSOCKET_RECONNECT_COUNT + 1;
+                connect();
+            }
+        };
+
+        ctx.WEBSOCKET_RECONNECT_INTERVAL = setInterval(
+            reconnect,
+            ctx.WEBSOCKET_RECONNECT_INTERVAL_MS
+        );
+
+        reconnect();
+    }
 };
 
 const onError = (e) => {
@@ -185,14 +238,31 @@ const disconnect = () => {
         return;
     }
 
+    ctx.WEBSOCKET_EXPLICIT_DISCONNECT = true;
+
     setState(States.DISCONNECTING);
     unsubscribeAll();
 
     if (ctx.WEBSOCKET) {
-        (ctx.WEBSOCKET.disconnect as any)();
+        (ctx.WEBSOCKET.disconnect as any)(() => {
+            ctx.WEBSOCKET_EXPLICIT_DISCONNECT = false;
+        });
     }
 
     setState(States.DISCONNECTED);
+};
+
+const testDisconnect = () => {
+    if (isConnected() && !(isDisconnected() || isDisconnecting())) {
+        setState(States.DISCONNECTING);
+        unsubscribeAll();
+
+        if (ctx.WEBSOCKET) {
+            (ctx.WEBSOCKET.disconnect as any)();
+        }
+
+        setState(States.DISCONNECTED);
+    }
 };
 
 const resubscribeAll = () => {
@@ -255,7 +325,7 @@ const subscribeSync = (e) => {
 };
 
 const sendMessage = (e) => {
-    if (ctx.WEBSOCKET) {
+    if (ctx.WEBSOCKET && isConnected()) {
         ctx.WEBSOCKET.send(
             e.data.payload.channel,
             null,
@@ -343,6 +413,9 @@ _self.addEventListener('connect', (e) => {
 
     const register = (e) => {
         ctx.WEBSOCKET_PORTS.set(e.data.payload.id, port);
+        ctx.WEBSOCKET_RECONNECT_INTERVAL_MS = e.data.payload.reconnectInterval;
+        ctx.WEBSOCKET_RECONNECT_MAX_ATTEMPTS =
+            e.data.payload.reconnectMaxAttempts;
 
         if (e.data.payload.visible) {
             ctx.WEBSOCKET_VISIBLE_TABS.add(e.data.payload.id);
@@ -359,12 +432,13 @@ _self.addEventListener('connect', (e) => {
             [Events.SET_AUTH_HEADER]: setAuthHeader,
             [Events.SET_HEADER]: setHeader,
             [Events.SET_URL]: setUrl,
+            [Events.SET_VISIBILITY]: setVisibility,
             [Events.SUBSCRIBE]: subscribe,
             [Events.SUBSCRIBE_SYNC]: subscribeSync,
+            [Events.TEST_DISCONNECT]: testDisconnect,
             [Events.UNREGISTER]: unregister,
             [Events.UNSUBSCRIBE]: unsubscribe,
-            [Events.UNSUBSCRIBE_SYNC]: unsubscribe,
-            [Events.SET_VISIBILITY]: setVisibility
+            [Events.UNSUBSCRIBE_SYNC]: unsubscribe
         };
 
         if (messageBroker[e.data.type]) {
@@ -374,7 +448,7 @@ _self.addEventListener('connect', (e) => {
 
     port.start();
 
-    console.log('started webSocketWorkerInstance');
+    console.log('[use-stomp::port::connected]');
 
     port.postMessage({
         type: Events.CONNECTION,

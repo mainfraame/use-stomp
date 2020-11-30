@@ -2,15 +2,24 @@ import {useCallback, useEffect, useState} from 'react';
 
 import {useStompCtx} from './useStompCtx';
 
-export type UseStompProps<T> = [T, (message: T) => void, boolean];
+export type UseStompProps<T> = [
+    T,
+    (otherChannelOrMessage: string | T, message?: T) => void,
+    boolean
+];
 
 export default function useStomp<T>(channel: string): UseStompProps<T> {
     const context = useStompCtx();
     const [message, setMsg] = useState<T>(null);
 
     const send = useCallback(
-        (message) => {
-            context.send(channel, message);
+        (otherChannelOrMessage, message) => {
+            context.send(
+                otherChannelOrMessage && message
+                    ? otherChannelOrMessage
+                    : channel,
+                message
+            );
         },
         [channel, context.send]
     );

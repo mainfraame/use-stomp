@@ -1,11 +1,14 @@
 import {v4} from 'uuid';
 
+import {StompNotification} from './useStompNotifications';
 import {Events, States} from './webSocketConfigs';
 
 export type WebSocketWorkerProps = {
     onConnected?(): void;
     onDisconnected?(): void;
     onSyncState?(state: any): void;
+    reconnectMaxAttempts?: number;
+    reconnectInterval?: number;
     url?: string;
 };
 
@@ -23,6 +26,8 @@ export default class WebSocketWorker extends SharedWorker {
     _onSyncState = (state: any) => {};
 
     _syncChannels = {};
+
+    _syncMessages = {};
 
     constructor(props?: WebSocketWorkerProps) {
         super('webSocketWorkerInstance.js');
@@ -43,7 +48,10 @@ export default class WebSocketWorker extends SharedWorker {
 
         this.port.addEventListener('message', this._onMessage);
 
-        this._register();
+        this._register({
+            reconnectMaxAttempts: props.reconnectMaxAttempts || 10,
+            reconnectInterval: props.reconnectInterval || 10000
+        });
 
         if (props.url) {
             this.setUrl(props.url);
@@ -59,9 +67,23 @@ export default class WebSocketWorker extends SharedWorker {
         });
     };
 
+    destroy = () => {
+        this._unregister();
+
+        this.port.removeEventListener('message', this._onMessage);
+        document.removeEventListener('visibilitychange', this._setVisibility);
+        window.removeEventListener('beforeunload', this._unregister);
+    };
+
     disconnect = () => {
         this.port.postMessage({
             type: Events.DISCONNECT
+        });
+    };
+
+    testDisconnect = () => {
+        this.port.postMessage({
+            type: Events.TEST_DISCONNECT
         });
     };
 
@@ -137,10 +159,36 @@ export default class WebSocketWorker extends SharedWorker {
 
     subscribeSync = (
         channel: string,
-        callback: (message: any) => void
+        callback: (
+            messages: StompNotification<any>[],
+            add: StompNotification<any>[],
+            remove: StompNotification<any>[]
+        ) => void
     ): (() => void) => {
+        const fn = (messages) => {
+            const oldMessages = this._syncMessages[channel] || [];
+
+            const oldIds = oldMessages.map((msg) => msg.id);
+
+            this._syncMessages[channel] = messages;
+
+            const newIds = (this._syncMessages[channel] || []).map(
+                (msg) => msg.id
+            );
+
+            const add = messages.filter(
+                ({id}) => !oldIds.includes(id) && newIds.includes(id)
+            );
+
+            const remove = oldMessages.filter(
+                ({id}) => !newIds.includes(id) && oldIds.includes(id)
+            );
+
+            callback(messages, add, remove);
+        };
+
         if (!(this._syncChannels[channel] || []).length) {
-            this._syncChannels[channel] = [callback];
+            this._syncChannels[channel] = [fn];
 
             this.port.postMessage({
                 type: Events.SUBSCRIBE_SYNC,
@@ -150,16 +198,13 @@ export default class WebSocketWorker extends SharedWorker {
                 }
             });
         } else {
-            this._syncChannels[channel] = [
-                ...this._syncChannels[channel],
-                callback
-            ];
+            this._syncChannels[channel] = [...this._syncChannels[channel], fn];
         }
 
         return () => {
             this._syncChannels[channel] = (
                 this._syncChannels[channel] || []
-            ).filter((fn) => fn !== callback);
+            ).filter((callback) => callback !== fn);
 
             if (!this._syncChannels[channel].length) {
                 this.unsubscribeSync(channel);
@@ -193,11 +238,18 @@ export default class WebSocketWorker extends SharedWorker {
         }
     };
 
-    _register = () => {
+    _register = (
+        props: Pick<
+            WebSocketWorkerProps,
+            'reconnectMaxAttempts' | 'reconnectInterval'
+        >
+    ) => {
         this.port.postMessage({
             type: Events.REGISTER,
             payload: {
                 id: this._id,
+                reconnectInterval: props.reconnectInterval,
+                reconnectMaxAttempts: props.reconnectMaxAttempts,
                 visibility: document.visibilityState === 'visible'
             }
         });
@@ -227,11 +279,17 @@ export default class WebSocketWorker extends SharedWorker {
         if (this._syncChannels[event.data.payload.channel]) {
             this._syncChannels[event.data.payload.channel].forEach((fn) => {
                 fn(
-                    (event.data.payload.message || []).map((item) => ({
-                        ...item,
-                        dismiss: () =>
-                            this.dismiss(event.data.payload.channel, item.id)
-                    }))
+                    (event.data.payload.message || []).map(
+                        ({message, ...item}) => ({
+                            ...item,
+                            content: message,
+                            dismiss: () =>
+                                this.dismiss(
+                                    event.data.payload.channel,
+                                    item.id
+                                )
+                        })
+                    )
                 );
             });
         }
@@ -265,16 +323,12 @@ export default class WebSocketWorker extends SharedWorker {
     };
 
     _unregister = () => {
-        this.port.removeEventListener('message', this._onMessage);
-
         this.port.postMessage({
             type: Events.UNREGISTER,
             payload: {
                 id: this._id
             }
         });
-
-        document.removeEventListener('visibilitychange', this._setVisibility);
     };
 
     _workerEvents = {
