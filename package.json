@@ -1,6 +1,6 @@
 {
     "name": "use-stomp",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "description": "react provider, class decorator, and a hook for websockets using the stomp protocol",
     "main": "cjs/index.js",
     "module": "esm/index.js",
@@ -39,11 +39,12 @@
     },
     "homepage": "https://github.com/mentierd/use-stomp#readme",
     "dependencies": {
-        "core-js": "^3.8.0",
+        "core-js": "~3.8.0",
+        "notistack": "~1.0.2",
         "react": ">=16.9.0",
         "react-dom": ">=16.9.0",
         "sockjs-client": "^1.5.0",
-        "uuid": "^8.3.1",
+        "uuid": "~8.3.1",
         "websocket": "^1.0.32"
     },
     "devDependencies": {
