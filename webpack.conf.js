@@ -15,7 +15,7 @@ module.exports = {
     module: {
         rules: [
             {
-                test: /\.(js|jsx|ts|tsx)$/,
+                test: /\.(cjs|js|jsx|ts|tsx)$/,
                 use: [
                     {
                         loader: 'babel-loader',
@@ -31,13 +31,7 @@ module.exports = {
         ]
     },
     resolve: {
-        extensions: [
-            '.js',
-            '.jsx',
-            '.json',
-            '.ts',
-            '.tsx'
-        ],
+        extensions: ['.cjs', '.js', '.jsx', '.json', '.ts', '.tsx'],
         modules: [path.join(process.cwd(), './node_modules'), 'node_modules']
     }
 };
