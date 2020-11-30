@@ -31,6 +31,12 @@ module.exports = {
         ]
     },
     resolve: {
+        alias: {
+            colorette: path.join(
+                process.cwd(),
+                './node_modules/colorette/index.cjs'
+            )
+        },
         extensions: ['.cjs', '.js', '.jsx', '.json', '.ts', '.tsx'],
         modules: [path.join(process.cwd(), './node_modules'), 'node_modules']
     }
