@@ -1,6 +1,6 @@
 {
-    "name": "use-stomp",
-    "version": "1.1.1",
+    "name": "react-use-stomp",
+    "version": "2.0.0",
     "description": "react provider, class decorator, and a hook for websockets using the stomp protocol",
     "main": "cjs/index.js",
     "module": "esm/index.js",
@@ -9,19 +9,16 @@
         "cjs",
         "esm",
         "src",
-        "webSocketWorkerInstance.js",
-        "webSocketWorkerInstance.js.map",
         "README.md"
     ],
     "scripts": {
         "build": "NODE_ENV=production ./build.sh -build -styleguidist",
         "build:dev": "NODE_ENV=development ./build.sh -build -pack",
-        "build:worker": "webpack --config ./webpack.conf.js --mode=development",
         "format": "prettier --check \"{,!(node_modules|cjs|esm|gradle)/**/}*.{ts,tsx}\" --loglevel warn -w"
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/mentierd/use-stomp.git"
+        "url": "git+https://github.com/wxsolo/use-stomp.git"
     },
     "keywords": [
         "react",
@@ -32,15 +29,17 @@
         "stomp",
         "stompjs"
     ],
-    "author": "dayne mentier",
+    "author": [
+        "dayne mentier",
+        "wxsolo"
+    ],
     "license": "ISC",
     "bugs": {
-        "url": "https://github.com/mentierd/use-stomp/issues"
+        "url": "https://github.com/wxsolo/use-stomp/issues"
     },
-    "homepage": "https://github.com/mentierd/use-stomp#readme",
+    "homepage": "https://github.com/wxsolo/use-stomp#readme",
     "dependencies": {
         "core-js": "~3.8.0",
-        "notistack": "~1.0.2",
         "react": ">=16.9.0",
         "react-dom": ">=16.9.0",
         "sockjs-client": "^1.5.0",
@@ -71,7 +70,6 @@
         "babel-plugin-styled-components": "~1.11.1",
         "husky": "~4.2.5",
         "import-sort-style-module": "6.0.0",
-        "notistack": "^1.0.2",
         "prettier": "^2.1.2",
         "prettier-plugin-import-sort": "0.0.6",
         "raw.macro": "0.4.2",
