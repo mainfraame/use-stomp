@@ -21,7 +21,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/wxsolo/use-stomp.git"
+        "url": "git+https://github.com/wxsolo/react-use-stomp.git"
     },
     "keywords": [
         "react",
@@ -32,12 +32,15 @@
         "stomp",
         "stompjs"
     ],
-    "author": ["dayne mentier", "wxsolo"],
+    "author": [
+        "dayne mentier",
+        "wxsolo"
+    ],
     "license": "ISC",
     "bugs": {
-        "url": "https://github.com/wxsolo/use-stomp/issues"
+        "url": "https://github.com/wxsolo/react-use-stomp/issues"
     },
-    "homepage": "https://github.com/wxsolo/use-stomp#readme",
+    "homepage": "https://github.com/wxsolo/react-use-stomp#readme",
     "dependencies": {
         "core-js": "~3.8.0",
         "notistack": "~1.0.2",

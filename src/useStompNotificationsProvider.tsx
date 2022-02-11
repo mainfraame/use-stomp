@@ -12,6 +12,10 @@ export type UseStompNotificationsProviderProps = SnackbarProviderProps & {
      */
     url: string;
     /**
+     * children React.ReactNode | React.ReactNode[]
+     */
+    children: React.ReactNode | React.ReactNode[];
+    /**
      * request auth header will be passed to the server or agent through the STOMP connection frame
      */
     authHeader?: string;
