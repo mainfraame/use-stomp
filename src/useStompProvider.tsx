@@ -11,6 +11,10 @@ export type UseStompProviderProps = {
      */
     url: string;
     /**
+     * children React.ReactNode | React.ReactNode[]
+     */
+    children: React.ReactNode | React.ReactNode[];
+    /**
      * Add console logs for debugging
      */
     debug?: boolean;
