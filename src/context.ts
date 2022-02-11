@@ -1,5 +1,7 @@
 import React from 'react';
 
+import {StompNotification} from './useStompNotifications';
+
 export type UseStompCtxProps<T = any> = {
     /** whether or not the websocket is connected */
     connected?: boolean;
@@ -14,8 +16,12 @@ export type UseStompCtxProps<T = any> = {
     subscribeSync?(
         /** channel to subscribe to */
         channel: string,
-        /** callback for when message is received */
-        callback: (message: any) => void
+        /** callback for when message is received; includes added and removed */
+        callback: (
+            messages: StompNotification<any>[],
+            added: StompNotification<any>[],
+            removed: StompNotification<any>[]
+        ) => void
     ): () => void /** returns unsubscribe callback */;
     /**
      * dismiss a message in list
