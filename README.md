@@ -1,4 +1,4 @@
-# < use-stomp >
+# < react-use-stomp >
 
 react providers, decorators, and hooks for handling websockets using the stomp protocol.
 
@@ -15,7 +15,7 @@ Please see the typescript definition for the provider; it has notes regarding al
 
 ```typescript jsx
 import React, {useState} from 'react';
-import {UseStompProvider} from 'use-stomp';
+import {UseStompProvider} from 'react-use-stomp';
 
 const App = () => {
 
@@ -39,7 +39,7 @@ const App = () => {
 
 ```typescript jsx
 import React from 'react';
-import {useStomp} from 'use-stomp';
+import {useStomp} from 'react-use-stomp';
 
 export default () => {
 
@@ -82,7 +82,7 @@ If you need direct access to the context, use this hook.
 
 ```typescript jsx
 import React from 'react';
-import {useStompCtx} from 'use-stomp';
+import {useStompCtx} from 'react-use-stomp';
 
 export default () => {
 
@@ -100,7 +100,7 @@ The decorator allows you to use the useStomp hook with legacy class-based compon
 
 ```typescript jsx
 import React from 'react';
-import {withUseStomp} from 'use-stomp';
+import {withUseStomp} from 'react-use-stomp';
 
 @withUseStomp('/message/channel')
 class ExampleDecorator extends React.Component {
