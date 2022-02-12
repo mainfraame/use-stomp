@@ -1,4 +1,4 @@
-# < use-stomp >
+# < react-use-stomp >
 
 react providers, decorators, and hooks for handling websockets using the stomp protocol.
 
@@ -14,17 +14,17 @@ The list is based on the notifications received from the websocket channel and n
 -   queueing/dismissal management
 -   cross tab/window syncing of notifications
 
-Automatic reconnection is built into the [webSocketWorkerInstance](./src/webSocketWorkerInstance.ts). You can control 
-the max number of attempts and interval for reconnecting. 
+Automatic reconnection is built into the [webSocketWorkerInstance](./src/webSocketWorkerInstance.ts). You can control
+the max number of attempts and interval for reconnecting.
 
-Additionally, all [ < SnackProvider > ](https://iamhosseindhv.com/notistack/api#snackbarprovider) props are accepted and 
+Additionally, all [ < SnackProvider > ](https://iamhosseindhv.com/notistack/api#snackbarprovider) props are accepted and
 passed to the SnackProvider component.
 
 For more info, please see the typescript definition for the provider for the full list of props.
 
 ```typescript jsx
 import React, {useState} from 'react';
-import {UseStompNotificationsProvider} from 'use-stomp';
+import {UseStompNotificationsProvider} from 'react-use-stomp';
 
 const App = () => {
 
@@ -48,6 +48,16 @@ const App = () => {
 }
 ```
 
+\* Make sure install dependencies in your project, or add in package.json
+
+```
+"peerDependencies": {
+    "react": "^16.8.0",
+    "react-dom": "^16.8.0",
+    "@material-ui/core": "^4.0.0"
+  },
+```
+
 \* Make sure your public/dist folder contains the [webSocketWorkerInstance.js](./webSocketWorkerInstance.js) AND
 the [webSocketWorkerInstance.js.map](./webSocketWorkerInstance.js.map) files:
 
@@ -65,7 +75,7 @@ Please see the typescript definition for the provider; it has notes regarding al
 
 ```typescript jsx
 import React, {useState} from 'react';
-import {UseStompProvider} from 'use-stomp';
+import {UseStompProvider} from 'react-use-stomp';
 
 const App = () => {
 
@@ -100,7 +110,7 @@ Two additional/optional options are available:
 
 ```typescript jsx
 import React from 'react';
-import {useStompNotifications} from 'use-stomp';
+import {useStompNotifications} from 'react-use-stomp';
 
 export default () => {
 
@@ -164,7 +174,7 @@ export default () => {
 
 ```typescript jsx
 import React from 'react';
-import {useStomp} from 'use-stomp';
+import {useStomp} from 'react-use-stomp';
 
 export default () => {
 
@@ -207,7 +217,7 @@ If you need direct access to the context, use this hook.
 
 ```typescript jsx
 import React from 'react';
-import {useStompCtx} from 'use-stomp';
+import {useStompCtx} from 'react-use-stomp';
 
 export default () => {
 
@@ -225,7 +235,7 @@ The decorator allows you to use the useStomp hook with legacy class-based compon
 
 ```typescript jsx
 import React from 'react';
-import {withUseStomp} from 'use-stomp';
+import {withUseStomp} from 'react-use-stomp';
 
 @withUseStomp('/message/channel')
 class ExampleDecorator extends React.Component {
@@ -262,7 +272,7 @@ This decorator provides decorates your component with the props provided by `use
 
 ```typescript jsx
 import React from 'react';
-import {withUseStompNotifications} from 'use-stomp';
+import {withUseStompNotifications} from 'react-use-stomp';
 
 @withUseStompNotifications('/message/channel',{
     action: (dismiss) => (

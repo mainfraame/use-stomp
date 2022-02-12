@@ -11,6 +11,10 @@ export type UseStompProviderProps = {
      */
     url: string;
     /**
+     * children React.ReactNode | React.ReactNode[]
+     */
+    children: React.ReactNode | React.ReactNode[];
+    /**
      * Add console logs for debugging
      */
     debug?: boolean;
@@ -27,6 +31,10 @@ export type UseStompProviderProps = {
      */
     headers?: Record<string, unknown>;
     /**
+     * The request header that will be passed when subscribing to the target
+     */
+    subscribeHeaders?: Record<string, unknown>;
+    /**
      * override default parsing of messages
      */
     parseMessage?(channel: string, msg: any): any;
@@ -34,10 +42,6 @@ export type UseStompProviderProps = {
      * override default packaging of messages
      */
     packageMessage?(channel: string, msg: any, optHeaders: any): any;
-    /**
-     * The request header that will be passed when subscribing to the target
-     */
-    subscribeHeaders?: Record<string, unknown>;
 };
 
 export default React.memo<UseStompProviderProps>((props) => {
